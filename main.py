@@ -29,11 +29,35 @@ COORDS_ALTITUDE = 0
 FLOAT_LAT = 0
 FLOAT_LONG = 0
 
+SeenPokemon = buckets = [0] * 150
+
+
 notifier = Notifier()
 
 session = requests.session()
 session.headers.update({'User-Agent': 'Niantic App'})
 session.verify = False
+
+#IRC server csettings
+server = "yyz.redhat.com"       #settings
+channel = "#pokemongo-TO"
+botnick = "PokemonGoBot"
+
+def irc_connect():
+    irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #defines the socket
+    print "connecting to:"+server
+    irc.connect((server, 6667))                                                         #connects to the server
+    irc.send("USER "+ botnick +" "+ botnick +" "+ botnick +" :pokemonGoBot by ipun@redhat.com!\n") #user authentication
+    irc.send("NICK "+ botnick +"\n")                            #sets nick
+    irc.send("PRIVMSG nickserv :iNOOPE\r\n")    #auth
+    irc.send("JOIN "+ channel +"\n")        #join the chan
+
+    while 1:    #puts it in a loop
+       text=irc.recv(2040)  #receive the text
+       print text   #print text to console
+       if text.find('PING') != -1:                          #check if 'PING' is found
+          irc.send('PONG ' + text.split() [1] + '\r\n') #returnes 'PONG' back to the server (prevents pinging out!)
+
 
 def encode(cellid):
     output = []
@@ -339,7 +363,7 @@ def scan(access_token, api_endpoint):
                 direction = (('N' if difflat >= 0 else 'S') if abs(difflat) > 1e-4 else '')  + (('E' if difflng >= 0 else 'W') if abs(difflng) > 1e-4 else '')
                 # print("Within one step of %s (%sm %s from you):" % (other, int(origin.get_distance(other).radians * 6366468.241830914), direction))
                 # for poke in cell.NearbyPokemon:
-                #    print('(%s) %s' % (poke.PokedexNumber, pokemons[poke.PokedexNumber - 1]['Name']))
+			# print('(%s) %s' % (poke.PokedexNumber, pokemons[poke.PokedexNumber - 1]['Name']))
 
         for poke in visible:
             other = LatLng.from_degrees(poke.Latitude, poke.Longitude)
@@ -349,15 +373,20 @@ def scan(access_token, api_endpoint):
             difflng = diff.lng().degrees
             direction = (('N' if difflat >= 0 else 'S') if abs(difflat) > 1e-4 else '')  + (('E' if difflng >= 0 else 'W') if abs(difflng) > 1e-4 else '')
 
-            # print("(%s) %s is visible at (%s, %s) for %s seconds (%sm %s from you)" % (poke.pokemon.PokemonId, pokemons[poke.pokemon.PokemonId - 1]['Name'], poke.Latitude, poke.Longitude, poke.TimeTillHiddenMs / 1000, int(origin.get_distance(other).radians * 6366468.241830914), direction))
-            
-            result = "%s visible at <https://www.google.com/maps?q=%s,%s|(%s, %s)>" % (pokemons[poke.pokemon.PokemonId - 1]['Name'], poke.Latitude, poke.Longitude, poke.Latitude, poke.Longitude)
+
+            if (SeenPokemon[poke.pokemon.PokemonId-1] == 0):
+                result = "NEW: %s is visible for %s seconds (%sm %s from you)" % (pokemons[poke.pokemon.PokemonId - 1]['Name'], poke.TimeTillHiddenMs / 1000, int(origin.get_distance(other).radians * 6366468.241830914), direction)
+                SeenPokemon[poke.pokemon.PokemonId-1] = 1
+            else:
+                result = "%s is visible for %s seconds (%sm %s from you)" % (pokemons[poke.pokemon.PokemonId - 1]['Name'], poke.TimeTillHiddenMs / 1000, int(origin.get_distance(other).radians * 6366468.241830914), direction)
+            print result            
             poke_list.append(result)
 
-        payload = {'text': "Pokemon scan results:\n\n %s" % ('\n'.join(poke_list))}
+        #payload = {'text': "Pokemon scan results:\n\n %s" % ('\n'.join(poke_list))}
 
         notifier.notify(poke_list)
-        time.sleep(120)
+        print "sleep for 60 seconds"
+        time.sleep(60)
 
 if __name__ == '__main__':
     main()

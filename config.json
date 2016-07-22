@@ -1,0 +1,12 @@
+{
+	"username": "JABOOTYDUBS",
+	"password": "keyboard123",
+	"location": "90 Eglinton Ave, Toronto Ontario",
+	"services": [
+		{
+			"name": "No reason for this other than clarity when editing config",
+			"delay": 10,
+			"webhook": "https://hooks.slack.com/services/something"
+		}
+	]
+}
